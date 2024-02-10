@@ -1,3 +1,3 @@
-jobless :(         
+# jobless :(         
 
-portfolio : https://www.rkadiyala.com
+# portfolio : https://www.rkadiyala.com
