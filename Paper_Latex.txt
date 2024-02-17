@@ -1,0 +1,416 @@
+\pdfoutput=1
+% In particular, the hyperref package requires pdfLaTeX in order to break URLs across lines.
+\documentclass[11pt]{article}
+% Change "review" to "final" to generate the final (sometimes called camera-ready) version.
+% Change to "preprint" to generate a non-anonymous version with page numbers.
+\usepackage[preprint]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+% If the title and author information does not fit in the area allocated, uncomment the following
+%\setlength\titlebox{<dim>}
+% and set <dim> to something 5cm or larger.
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{textcomp}
+\usepackage{multicol}
+\usepackage{caption}
+\title{RKadiyala at SemEval-2024 Task 8: Black-Box Word-Level Text Boundary Detection in Partially Machine Generated Texts}
+\author{Ram Mohan Rao Kadiyala \\
+  University of Maryland , College Park \\
+  \href{mailto:rkadiyal@terpmail.umd.edu}{\texttt{rkadiyal@terpmail.umd.edu}} \\}
+\begin{document}
+\maketitle
+\begin{abstract}
+With increasing usage of generative models for text generation and widespread use of machine generated texts in various domains, being able to distinguish between human written and machine generated texts is a significant challenge. While existing models and proprietary systems focus on identifying whether given text is entirely human written or entirely machine generated, few systems provide insights at sentence or paragraph level at likelihood of being machine generated at a non reliable accuracy level. This paper introduces a novel approach for identifying which part(s) of a given text are machine generated at a word level while comparing results from different approaches and methods. We present a comparison with proprietary systems , performance of our model on unseen domains' and generators' texts. The finding reveal significant improvements in detection accuracy and comparison on other aspects of detection capabilities. Finally we discuss potential avenues for improvement and implications of our work. 
+\end{abstract}
+\section{Introduction}
+With rapid advancements and usage of AI models for text generation , being able to distinguish machine generated texts from human generated texts is gaining importance. While existing models and proprietary systems like GLTR \cite{DBLP:journals/corr/abs-1906-04043}, ZeroGPT \cite{AITextDetector}, GPTZero \cite{tian2023gptzero}, GPTKit \cite{gptkit}, Open AI detector , etc.. focus on detecting whether a given text is entirely AI written or entirely human written , there was less advancement in detecting which parts of a given text are AI written in a partially machine generated text. While some of the above mentioned systems provide insights into which parts of the given text are likely AI generated , these are often found to be unreliable and having an accuracy close or worse than random guessing. There is also a rise in usage of AI to spread fake news and misinformation along with using AI models to modify wikepedia articles \cite{vice2023aiwikipedia}. Our proposed model focuses solely on detecting word level text boundary in partially machine generated texts. This paper also discusses implications of findings , comparisons with different models and approaches , comparision with existing proprietary systems with relevant metrics , other findings regarding AI generated texts. The official submission is DeBERTa-CRF , several other models have been tested for comparison. With new, better, and diverse AI models coming into existence, having a model that can make accurate predictions on unseen domains and unseen generator texts can be useful for practical scenarios. 
+\section{Dataset}
+The dataset used is part of M4 Dataset\cite{wang2023m4} consisting of texts each of which are partially human written and partially machine generated sourced from peerread reviews and outfox student essays \cite{koike2023outfox} all of which are in English. The generators used were GPT-4 , ChatGPT , LLaMA2 7/13/70B \cite{touvron2023llama}. \autoref{table:1} shows the source , generator used and data split of the dataset. 
+\begin{table}[ht]
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{Set} & \textbf{Count} & \textbf{Sources} & \textbf{Generators} \\
+\hline
+Train & 3649 & PeerRead & ChatGPT \\
+\hline
+Dev & 505 & PeerRead & ChatGPT \\
+\hline
+Test & 11123 & PeerRead & LLaMA2 7/13/70B \\
+\cline{3-4}
+&  & OUTFOX & LLaMA2 7/13/70B \\
+\cline{3-4}
+&  & OUTFOX & GPT-4 \\
+\hline
+\end{tabular}
+\caption{Dataset sources and split}
+\label{table:1}
+\end{table}
+\section{Baseline}
+The provided baseline uses finetuned longformer over 10 epochs. The baseline classifies tokens individually as human or machine generated and then maps the tokens to words to identify the text boundary between machine generated and human written texts. The final predictions are the labels of words after whom the text boundary exists. The detection criteria is first change from 0 to 1 or vice versa. We have tried one more approach by considering the change only if consecutive tokens are the same. The baseline model achieved an MAE of 3.53 on the Development set which consists of same source and generator as the training data. The model had an MAE of 21.535 on the test set which consists of unseen domains and generators. 
+\section{Proposed Model}
+We have built several models out of which DeBERTa-CRF was used as the official submission. We have finetuned DeBERTa\cite{he2023debertav3}, SpanBERT\cite{joshi2020spanbert}, Longformer\cite{beltagy2020longformer}, Longformer-pos (longfomer with training only on position embeddings), each of them again along with Conditional Random Fields (CRF)\cite{mccallum2012efficiently} with different text boundary identification logic by training on just the training dataset and after hyperparameter tuning , the predictions have been made on both development and test sets. The primary metric used was Mean Average Error of predicted word labels of the text boundaries. Some of the plots and information couldn't be added due to page limits and are availible in the \verb|documentation website|. \footnote{more information available at : \url{https:www.rkadiyala.com/papers}} along with the  \verb|code used|. \footnote{Code availible at : \url{https://github.com/1024-m/NAACL-2024-SemEval-TASK-8C}}. a hypothetical example in \autoref{figure:1} demonstrates how the model works. The tokens are classified at first and mapped to words. In cases where part of a word is classified at human and rest as machine (incase of longer words), the word as a whole is classified as machine generated. 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Flowchart-1.png}
+\caption{A visual example of working of the model}
+\label{figure:1}
+\end{figure}
+\subsection{Our system}
+We have used 'deberta-v3-base' along with CRF using Adam\cite{kingma2017adam} optimizer over 30 epochs with a learning rate of 2e-5 and a weight decay of 1e-2 to prevent overfitting. other models that have been used are 'Spanbert-base-cased', 'longformer-base-4096', 'longformer-base-4096-extra.pos.embd.only' which is similar to Longformer but pretrained to preserve and freeze weights from RoBERTa\cite{liu2019roberta} and train on only the position embeddings. The large variants of these have also been tested however the base variants have achieved better performance on both the development and testing datasets. predictions have been made on both the development and testing datasets by training on just the training dataset. Two approaches were used when detecting text boundary 1) looking for changes in token predictions i.e from 1 to 0 or 0 to 1, 2) looking for change to consecutive tokens i.e 1 to 0,0 or 0 to 1,1
+\subsection{Results}
+The results from using different models with the two approaches on the development set can be seen in \autoref{table:2}. These models have been trained over 30 epochs and the best results were added among the several attempts with varying hyperparameters. while the provided baseline has been trained on 10 epochs using longformer.
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{approach \textrightarrow} & \textbf{I} & \textbf{II} \\
+\textbf{Model \textdownarrow} & \multicolumn{2}{c}{\textbf{MAE}} \\
+\hline
+DeBERTa & 3.217 & 3.174 \\
+DeBERTa-CRF & \textbf{2.311} & \textbf{2.192} \\
+SpanBERT & 6.593 & 5.918 \\
+SpanBERT-CRF & 4.855 & 4.519 \\
+Longformer & 3.52 & 2.878 \\
+Longformer-CRF & 2.782 & 2.41 \\
+Longformer.pos & 3.296 & 3.075 \\
+Longformer.pos-CRF & 2.613 & 2.406 \\
+\hline
+Longformer (baseline) & 3.53 & 3.287 \\
+\hline
+\end{tabular}
+\caption{Performance of different models and approaches on development set}
+\label{table:2}
+\end{table}
+These models have then been used to make predictions on the test set without further training or changes using the set of hyperparameters that produced the best results for each on the development set, these results can be seen in \autoref{table:3}
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{approach \textrightarrow} & \textbf{I} & \textbf{II} \\
+\textbf{Model \textdownarrow} & \multicolumn{2}{c}{\textbf{MAE}} \\
+\hline
+DeBERTa & 22.031 & 19.347 \\
+DeBERTa-CRF & 20.074 & \textbf{18.538} \\
+SpanBERT & 28.406 & 25.229 \\
+SpanBERT-CRF & 24.283 & 20.97 \\
+Longformer & 27.985 & 23.177 \\
+Longformer-CRF & 20.941 & 18.943 \\
+Longformer.pos & 23.219 & 19.502 \\
+Longformer.pos-CRF & 20.223 & \textbf{18.542} \\
+\hline
+baseline & 21.535 & 19.898 \\
+\hline
+\end{tabular}
+\caption{Performance of different models and approaches on test set}
+\label{table:3}
+\end{table}
+\section{Comparison with proprietary systems}
+Some of the proprietary systems built for the purpose of detecting machine generated text provide insights into what parts of the text input is likely machine generated at a sentence / paragraph level. Many of the popular systems like GPTZero, GPTkit, etc.. are found to to less reliable for the task of detecting text boundary in partially machine generated texts. Of the existing models only ZeroGPT was found to produce a reliable level of accuracy. For the purpose of accurate comparision percentage accuracy of classifying each sentence as human / machine generated is used as ZeroGPT does detection at a sentence level.
+\subsection{Results comparision}
+Since the comparison is being done at a sentence level, In cases where actual boundary lies inside the sentence, calculation of metrics is done on the remaining sentences, and when actual boundary is at the start of a sentence , all sentences were taken into consideration. With regard to predictions, A sentence prediction is deemed correct only when a sentence that is entirely human written is predicted as completely human written and vice versa. The two metrics used were average sentence accuracy which is average of percentage of sentences correctly calculated in each input text, and overall sentence accuracy which is percentage of sentences in the entire dataset accurately classified. The results on the development and test sets are as shown in \autoref{table:4}. Since ZeroGPT's API doesnt cover sentece level predictions , they have been manually calculated over the development set and can be found \verb|here|. \footnote{ZeroGPT annotations available at : \url{https://docs.google.com/spreadsheets/d/1DOgAZBWQ3G6JtslQwgg9tJiX1WyZt0ajMrr2I9-yfHU/edit?usp=sharing}}. Since its difficult to do the same on 12000 items of the test set , a small section of 500 random samples were used for comparision and were found to perform similar to the development set with a 15-20 percent lower accuracy than the proposed models.
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{Dev set} & & \\
+\textbf{Model} & \textbf{Accuracy} & \textbf{Avg. Accuracy} \\
+\hline
+DeBERTa-CRF & \textbf{0.9883} & \textbf{0.9848} \\
+Longformer.pos-CRF & 0.9806 & 0.9778 \\
+ZeroGPT & 0.8086 & 0.7976 \\
+\hline
+\textbf{Test set} & & \\
+\textbf{Model} & \textbf{Accuracy} & \textbf{Avg. Accuracy} \\
+\hline
+DeBERTa-CRF & \textbf{0.9969} & \textbf{0.9974} \\
+Longformer.pos-CRF & 0.9889 & 0.9901 \\
+\hline
+\end{tabular}
+\end{table}
+\captionof{table}{Performance at sentence level across Development and Test Sets}
+\label{table:4}
+\section{Conclusion}
+The metrics from \autoref{table:4} demonstrate the proposed model's performance on both seen domain and generator data (dev set) along with unseen domain and generator data (test set) , hinting at wider applicability. While there was a drop in accuracy at a word level, there was an increase in sentence level accuracy. 
+\subsection{Strenghts and Weaknesses}
+It was observed that the proprietary systems used for comparison struggled with shorter texts. i.e when the input text has fewer sentences, the predictions were either that the input text is fully human written or fully machine generated leading to comparatively low accuracy.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{Plot-67.png}
+\caption{Average sentence accuracy VS number of sentences in given text : DeBERTa-CRF}
+\label{figure:2}
+\end{figure}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{Plot-69.png}
+\caption{Average sentence accuracy VS number of sentences in given text : ZeroGPT}
+\label{figure:3}
+\end{figure}
+The average accuracy of sentence level classification for each text length of our model and ZeroGPT can be seen in \autoref{figure:2} , \autoref{figure:3} respectively. the proposed model overcomes this issue by providing more accurate results even on short text inputs. 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-11.png}
+\caption{Text boundary location VS MAE : DeBERTa}
+\label{figure:4}
+\end{figure}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-19.png}
+\caption{Text boundary location VS MAE : Longformer}
+\label{figure:5}
+\end{figure}
+The sentence level accuracy did vary considerably while comparing cases where the actual text boundary is at the end of sentence and those where it is mid sentence. The results can be seen in \autoref{table:5}.
+\begin{table}[ht]
+\begin{tabular}{lcc}
+\hline
+\textbf{Model \textdownarrow} & \textbf{mid sent..} & \textbf{end of sent..} \\
+\hline
+DeBERTa-CRF & 0.9835 & \textbf{0.9972} \\
+Longformer.pos-CRF & 0.9765 & \textbf{0.9901} \\
+ZeroGPT & 0.7942 & \textbf{0.8296} \\
+\hline
+\end{tabular}
+\caption{Performance of models based on text boundary placement}
+\label{table:5}
+\end{table}
+\subsection{Possible Improvements}
+DeBERTa performed better when text boundaries are in the first half of the given text, while longformer had better performance when the text boundary is in the other half. The cases where there was a significantly bigger MAE , atleast one of two (DeBERTa and Longformer) had made a very close prediction. There is a possibility that an ensemble of both might have a better performance. Further, the POS tags of the words pre and post text boundary were examined to findout what led to some cases having higher MAE. \autoref{figure:6} and \autoref{figure:7} display the count of data samples in train set and median MAE of those in test set for each POS tags combination pre and post split.
+The cases where the median MAE was higher (i.e 30 or above) had none or very few samples in the training set. Excluding those cases the new MAE was less than half of what it previously was. Adding more data that covers all cases of pre-split and post-split POS tag words might lead to better results. At a sentence level the accuracy was close to 100 percent excluding the above mentioned samples.
+\begin{figure*}[!ht]
+\centering
+\includegraphics[width=0.922\textwidth]{plot-1.png}
+\caption{Train set count for each pre and post text boundary POS tag combination}
+\label{figure:6}
+\end{figure*}
+\begin{figure*}[!ht]
+\centering
+\includegraphics[width=0.922\textwidth]{Plot-8.png}
+\caption{Test set median MAE for each pre and post text boundary POS tag combination}
+\label{figure:7}
+\end{figure*}
+\subsection{Possible Extensions and Applications}
+The need to detect AI generated content is also prevailent over other languages too. While the current model utilizes just the english language data, gathering multilingual data and having a multilingual model might also be of great use.
+With the growth of misinformation and fake news using bots on social media handles\cite{NEURIPS2019_3e9f0fc9}, being able to detect AI generated texts is of great importance. As most of the texts i.e posts , comments etc.. are shorter in length and difficult to detect, An extension of the current work by training on social media data may yield a good result as demonstarted in \autoref{figure:2} and \autoref{figure:3}. Some of the other findings are availible in the \autoref{sec:appendix}.
+% Bibliography entries for the entire Anthology, followed by custom entries
+%\bibliography{anthology,custom}
+% Custom bibliography entries only
+\bibliography{custom}
+
+\appendix
+\section{Other Plots and information}
+\label{sec:appendix}
+Some of the information that couldn't be covered due to page limiations along with detials for system replication have been added here.
+\subsection{POS tag usage : human vs machines}
+\label{sec:appendix_A}
+It can be seen from \autoref{figure:8} , \autoref{figure:9} and \autoref{figure:10} that machine generated texts had higher share of certain POS tags in the machine genrated parts compared to the human written parts. This was observed in all 3 sets, the train and dev had  similar distributions as a result of using same generators i.e ChatGPT and the test had a bit of a variation due to multiple different generators i.e LLaMA2 and GPT4. Although the percentile comparison did vary from train,dev and test sets , it was minimal.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-42.png}
+\caption{Percentile distribution of each POS tag in train set : human VS machine}
+\label{figure:8}
+\end{figure}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-43.png}
+\caption{Percentile distribution of each POS tag in dev set : human VS machine}
+\label{figure:9}
+\end{figure}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-44.png}
+\caption{Percentile distribution of each POS tag in test set : human VS machine}
+\label{figure:10}
+\end{figure}
+
+\subsection{MAE characteristics : DeBERTa vs Longformer}
+\label{sec:appendix_A2}
+As discussed in the paper , there were some instances where one model performed significantly better than the other as seen in \autoref{figure:11} and \autoref{figure:12} hinting that an ensemble of both's predictions might yield better results. 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-7.png}
+\caption{Median MAE based on pre and post text boundary POS tags : DeBERTa-CRF}
+\label{figure:11}
+\end{figure}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-16.png}
+\caption{Median MAE based on pre and post text boundary POS tags : Longformer.pos-CRF}
+\label{figure:12}
+\end{figure}
+
+\section{potential for misuse and possible solutions}
+\label{sec:appendix_B}
+as seen in \autoref{figure:6} and \autoref{figure:7}, the biggest error cases in pre and post text boundary POS tags were the ones which were not present at all or in very minute amount in the training data, nearly 92 percentage of cases had less than 10 samples to train on and 64 percentage of cases had no samples at all in the training set. A potential solution would be including ample amount of data for all possibilites to cover wider range of texts.
+
+\section{System Description}
+
+DeBERTa-CRF was the official submission , longformer.pos-CRF had almost the same performance on the test set. i.e 18.538 and 18.542.
+\label{sec:appendix_C}
+\\
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Official submission model configuration} \\
+\hline
+Base model & microsoft/deberta-v3-base \\
+\hline
+\centering
+Finetuning : & \\
+\hspace{2ex}Learning rate & $2 \times 10^{-5}$ \\
+\hspace{2ex}Weight decay & $1 \times 10^{-2}$ \\
+\hspace{2ex}CRF Dropout rate & $75 \times 10^{-4}$ \\
+\hspace{2ex}Max length & 1024 tokens \\
+\hspace{2ex}Epochs & 30 \\
+\hspace{2ex}Optimizer & Adam \\
+\hline
+Preprocessing & No \\
+\hline
+Trained on & only train set \\
+\hline
+Sentence separation & nltk: '!' , '.' , '?' \\
+\hline
+Hardware & 1x V100 GPU 16GB RAM \\
+\hline
+\end{tabular}
+\caption{Official submission system description : DeBERTa-CRF}
+\label{table:6}
+\end{table}
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Secondary model configuration} \\
+\hline
+Base model & allenai/longformer-base- \\
+& 4096-extra.pos.embd.only \\
+\hline
+Finetuning : & \\
+\hspace{2ex}Learning rate & $2 \times 10^{-5}$ \\
+\hspace{2ex}Weight decay & $1 \times 10^{-2}$ \\
+\hspace{2ex}CRF Dropout rate & $1 \times 10^{-2}$ \\
+\hspace{2ex}Max length & 4096 tokens \\
+\hspace{2ex}Epochs & 30 \\
+\hspace{2ex}Optimizer & Adam \\
+\hline
+Preprocessing & No \\
+\hline
+Trained on & only train set \\
+\hline
+Sentence separation & nltk: '!' , '.' , '?' \\
+\hline
+Hardware & 1x V100 GPU 16GB RAM \\
+\hline
+\end{tabular}
+\caption{Unofficial submission system description : Longformer.pos-CRF}
+\label{table:7}
+\end{table}
+
+Other models that have been tested but were found to have a big margin of performance with above listed models
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|}
+\hline
+Other models tested \\
+\hline
+microsoft/deberta-v3-large \\
+microsoft/deberta-v3-small \\
+microsoft/deberta-v3-xsmall \\
+SpanBERT/spanbert-base-cased \\
+SpanBERT/spanbert-large-cased \\
+allenai/longformer-base-4096 \\
+allenai/longformer-large-4096 \\
+allenai/longformer-large-4096-extra.pos.embd \\
+\hline
+\end{tabular}
+\caption{Other models tested as part of the task}
+\label{table:8}
+\end{table}
+
+Due to time and computaional resources limitation, only a part of hyperparameter space was explored.
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Hyperparameter space explored} \\
+\hline
+\hspace{2ex}Learning rate & $1 \times 10^{-5}$ \\
+& $2 \times 10^{-5}$ \\
+& $3 \times 10^{-5}$ \\
+\hline
+\hspace{2ex}Weight decay & $1 \times 10^{-2}$ \\
+& $2 \times 10^{-2}$ \\
+& $25 \times 10^{-3}$ \\
+& $5 \times 10^{-2}$ \\
+\hline
+\hspace{2ex}CRF Dropout rates & $2 \times 10^{-2}$\\
+& $15 \times 10^{-3}$\\
+& $1 \times 10^{-2}$ \\
+& $90 \times 10^{-4}$\\
+& $80 \times 10^{-4}$\\
+& $75 \times 10^{-4}$\\
+& $70 \times 10^{-4}$\\
+& $60 \times 10^{-4}$\\
+\hline 
+\hspace{2ex}Max length & 1024 tokens \\
+& 1024-4096 *for longformer \\
+\hline
+\hspace{2ex}Epochs & 10 to 30 \\
+\hline
+\hspace{2ex}Optimizers &  Adafactor \\
+& Adam \\
+\hline
+\hspace{2ex}Training data & full train set \\
+& full train+dev set \\
+& 80\% train set \\
+& stratified on no.of.sent.. \\
+\hline
+\end{tabular}
+\caption{Hyperparameters explored on the models}
+\label{table:9}
+\end{table}
+
+Time taken for training
+
+\begin{table}[!ht]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Training time} \\
+\hline
+On Train set & 11h 38m (30epochs) \\
+On Train+dev set & 14h 4m (30epochs) \\
+\hline
+\end{tabular}
+\caption{Training time for the models}
+\label{table:10}
+\end{table}
+
+
+\section{Effect of Text boundary location on performance}
+\label{sec:appendix_D}
+The location of text boundaries with respect to lenght of the text samples are varying over the training and testing set as seen in \autoref{figure:13} and \autoref{figure:14}. Despite training on samples where the text boundaries are in the first half in most of the cases, the models did perform well on the testing set where there is a good amount of samples with text boundaries in later half. This is an area where the proprietary systems struggled. 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-98.png}
+\caption{Location of text boundary : training set}
+\label{figure:13}
+\end{figure}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth]{latex/Plot-99.png}
+\caption{Location of text boundary : training set}
+\label{figure:14}
+\end{figure}
+
+\end{document}
