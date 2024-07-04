@@ -2,5 +2,3 @@
 
 ## paper link : naacl placeholder
 ## model      : huggingface placeholder
-
-## portfolio : https://www.rkadiyala.com
